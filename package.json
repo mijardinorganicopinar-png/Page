@@ -1,0 +1,13 @@
+{
+  "name": "vivero-backend",
+  "version": "1.0.0",
+  "description": "Backend para Mi Jardin Vivero Organico",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mercadopago": "^2.0.8"
+  }
+}

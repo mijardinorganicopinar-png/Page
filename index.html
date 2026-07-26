@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="site-title-meta">Mi Jardín - Vivero Orgánico Pinar</title>
+  <!-- SDK oficial de Mercado Pago -->
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+  
+  <style>
+    :root {
+      --primary: #2d5a27;
+      --accent: #88c057;
+      --bg: #f4f7f4;
+      --card-bg: #ffffff;
+      --text: #2c3e50;
+      --border-radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: var(--bg); color: var(--text); padding-bottom: 60px; }
+
+    /* Barra Superior de Admin */
+    .admin-bar {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .admin-bar button {
+      background: #88c057;
+      border: none;
+      color: #fff;
+      padding: 5px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    /* Modales */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 25px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .modal-content h3 { margin-bottom: 15px; color: var(--primary); }
+    .modal-content label { font-size: 0.85rem; font-weight: bold; color: #555; display: block; margin-top: 8px; }
+    .modal-content input, .modal-content textarea, .modal-content select {
+      width: 100%; padding: 10px; margin-top: 4px; margin-bottom: 10px;
+      border: 1px solid #ccc; border-radius: 6px;
+    }
+
+    /* Editor de Estilos Flotante */
+    .editor-drawer {
+      display: none;
+      background: #fff;
+      border-bottom: 2px solid var(--accent);
+      padding: 15px 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .editor-drawer.active { display: block; }
+    .editor-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 10px;
+    }
+
+    /* Header y Layout */
+    header {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+    .header-logo { max-height: 80px; margin-bottom: 10px; display: none; }
+
+    .main-container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 15px;
+      display: grid;
+      grid-template-columns: 260px 1fr 300px;
+      gap: 20px;
+    }
+
+    /* Filtros (Izquierda) */
+    .sidebar-filters {
+      background: #fff;
+      padding: 15px;
+      border-radius: var(--border-radius);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      height: fit-content;
+    }
+    .filter-group { margin-bottom: 15px; }
+    .filter-group h4 { margin-bottom: 8px; font-size: 0.95rem; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+
+    /* Productos (Centro) */
+    .catalog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      background: #fff;
+      padding: 10px 15px;
+      border-radius: var(--border-radius);
+    }
+
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    /* Tarjetas de Producto */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid #e0e0e0;
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+    .card img { width: 100%; height: 150px; object-fit: cover; }
+    .card-badge {
+      position: absolute; top: 8px; left: 8px;
+      background: #e74c3c; color: #fff;
+      font-size: 0.7rem; font-weight: bold;
+      padding: 3px 6px; border-radius: 3px; text-transform: uppercase;
+    }
+    .card-body { padding: 12px; display: flex; flex-direction: column; flex-grow: 1; }
+    .card-title { font-size: 1rem; font-weight: 600; margin-bottom: 5px; color: var(--text); }
+    .card-seller { font-size: 0.75rem; color: #7f8c8d; margin-bottom: 8px; }
+    .card-price { font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-bottom: 10px; }
+    
+    .card-actions { display: flex; gap: 5px; margin-top: auto; }
+    .btn {
+      background: var(--primary); color: white; border: none;
+      padding: 8px; border-radius: 4px; cursor: pointer;
+      font-weight: 600; width: 100%; font-size: 0.85rem;
+    }
+    .btn-edit { background: #f39c12; }
+    .btn-delete { background: #c0392b; }
+
+    /* Carrito (Derecha) */
+    .cart-panel {
+      background: #fff;
+      padding: 15px;
+      border-radius: var(--border-radius);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      height: fit-content;
+      position: sticky; top: 70px;
+    }
+
+    /* Tabla de Pedidos */
+    .orders-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.85rem;
+    }
+    .orders-table th, .orders-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    .orders-table th {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    footer {
+      background: #1e3f1a;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+      margin-top: 40px;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 900px) {
+      .main-container { grid-template-columns: 1fr; }
+      .cart-panel { position: static; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra Admin -->
+  <div class="admin-bar">
+    <div id="admin-status">Modo Visitante</div>
+    <div>
+      <button id="auth-btn" onclick="openAuthModal()">Iniciar Sesión Admin</button>
+      <button id="orders-btn" onclick="openOrdersModal()" style="background:#27ae60; margin-left: 10px;">📦 Pedidos / Órdenes</button>
+      <button id="toggle-editor-btn" onclick="toggleEditor()" style="display:none; background:#3498db; margin-left: 10px;">🎨 Personalizar Diseño</button>
+      <button id="add-prod-btn" onclick="openProductModal()" style="display:none; background:#e67e22; margin-left: 10px;">➕ Publicar Producto</button>
+    </div>
+  </div>
+
+  <!-- Editor Flotante -->
+  <div class="editor-drawer" id="editor-drawer">
+    <h4 style="margin-bottom: 10px;">🛠️ Menú de Herramientas de Diseño</h4>
+    <div class="editor-grid">
+      <div>
+        <label>Color Principal:</label>
+        <input type="color" id="picker-primary" value="#2d5a27" onchange="updateStyles()">
+      </div>
+      <div>
+        <label>Color Acento:</label>
+        <input type="color" id="picker-accent" value="#88c057" onchange="updateStyles()">
+      </div>
+      <div>
+        <label>Fondo de Página:</label>
+        <input type="color" id="picker-bg" value="#f4f7f4" onchange="updateStyles()">
+      </div>
+      <div>
+        <label>Bordes (px):</label>
+        <input type="number" id="picker-radius" value="8" min="0" max="25" onchange="updateStyles()">
+      </div>
+      <div>
+        <label>URL del Logo:</label>
+        <input type="text" id="input-logo-url" placeholder="https://..." onchange="updateStyles()">
+      </div>
+      <div>
+        <label>Título del Sitio:</label>
+        <input type="text" id="input-site-title" value="Mi Jardín - Vivero Orgánico" onchange="updateStyles()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header id="main-header">
+    <img id="site-logo" class="header-logo" src="" alt="Logo">
+    <h1 id="site-title">Mi Jardín</h1>
+    <p id="site-subtitle">Vivero Orgánico Pinar — Catálogo Directo</p>
+  </header>
+
+  <div class="main-container">
+    
+    <!-- Filtros -->
+    <aside class="sidebar-filters">
+      <h3>Filtros</h3>
+      <br>
+      <div class="filter-group">
+        <h4>Categorías</h4>
+        <label><input type="radio" name="cat" value="all" checked onclick="filterCategory('all')"> Todas</label><br>
+        <label><input type="radio" name="cat" value="plantas" onclick="filterCategory('plantas')"> Plantas & Plantines</label><br>
+        <label><input type="radio" name="cat" value="insumos" onclick="filterCategory('insumos')"> Substratos & Compost</label><br>
+        <label><input type="radio" name="cat" value="herramientas" onclick="filterCategory('herramientas')"> Macetas & Herramientas</label>
+      </div>
+      <div class="filter-group">
+        <h4>Ubicación</h4>
+        <p style="font-size:0.85rem; color:#666;">El Pinar, Canelones, Uruguay</p>
+      </div>
+    </aside>
+
+    <!-- Listado de Productos -->
+    <main>
+      <div class="catalog-header">
+        <span>Publicaciones Activas: <strong id="product-count">0</strong></span>
+        <select onchange="sortProducts(this.value)">
+          <option value="default">Ordenar por: Relevancia</option>
+          <option value="low">Menor Precio</option>
+          <option value="high">Mayor Precio</option>
+        </select>
+      </div>
+
+      <div class="products-grid" id="products-container"></div>
+    </main>
+
+    <!-- Carrito -->
+    <aside class="cart-panel">
+      <h3>🛒 Mi Compra</h3>
+      <hr style="margin: 10px 0;">
+      <ul id="cart-list" style="list-style:none; font-size:0.9rem; margin-bottom:15px;">
+        <li style="color:#888;">El carrito está vacío</li>
+      </ul>
+      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:15px;">
+        Total: $<span id="cart-total">0</span> UYU
+      </div>
+      <button id="pay-btn" class="btn" style="background:#009ee3;" onclick="openCheckoutModal()" disabled>Iniciar Pago</button>
+    </aside>
+
+  </div>
+
+  <footer>
+    <p>© 2026 Mi Jardín Vivero Orgánico Pinar — Envíos a todo el país.</p>
+  </footer>
+
+  <!-- MODAL DE DATOS DE ENVÍO OBLIGATORIOS Y PAGO -->
+  <div class="modal" id="checkout-modal">
+    <div class="modal-content">
+      <h3>📋 Datos para el Envío (Obligatorios)</h3>
+      <form id="checkout-form" onsubmit="processCheckout(event)">
+        <label>Nombre y Apellido *</label>
+        <input type="text" id="cust-name" required placeholder="Ej: Maria Perez">
+
+        <label>Teléfono de Contacto *</label>
+        <input type="tel" id="cust-phone" required placeholder="Ej: 099 123 456">
+
+        <label>Dirección de Entrega *</label>
+        <input type="text" id="cust-address" required placeholder="Ej: Calle 1, Esquina Calle 2">
+
+        <label>Departamento *</label>
+        <select id="cust-dept" required>
+          <option value="">Seleccione Departamento...</option>
+          <option value="Canelones">Canelones</option>
+          <option value="Montevideo">Montevideo</option>
+          <option value="Artigas">Artigas</option>
+          <option value="Salto">Salto</option>
+          <option value="Paysandú">Paysandú</option>
+          <option value="Maldonado">Maldonado</option>
+          <option value="Rocha">Rocha</option>
+          <option value="Rivera">Rivera</option>
+          <option value="Tacuarembó">Tacuarembó</option>
+          <option value="Cerro Largo">Cerro Largo</option>
+          <option value="Treinta y Tres">Treinta y Tres</option>
+          <option value="Lavalleja">Lavalleja</option>
+          <option value="Durazno">Durazno</option>
+          <option value="Florida">Florida</option>
+          <option value="Flores">Flores</option>
+          <option value="San José">San José</option>
+          <option value="Colonia">Colonia</option>
+          <option value="Soriano">Soriano</option>
+          <option value="Río Negro">Río Negro</option>
+        </select>
+
+        <button type="submit" class="btn" style="background:#009ee3; margin-top:10px;">Confirmar y Generar Pago</button>
+      </form>
+
+      <div id="wallet_container" style="margin-top: 15px;"></div>
+      <button class="btn" style="background:#7f8c8d; margin-top:10px;" onclick="closeModal('checkout-modal')">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL DE GESTIÓN DE PEDIDOS / ÓRDENES DE COMPRA -->
+  <div class="modal" id="orders-modal">
+    <div class="modal-content" style="max-width: 800px;">
+      <h3>📦 Órdenes y Pedidos Registrados</h3>
+      <div id="orders-list-container">
+        <p style="color:#666;">Cargando pedidos...</p>
+      </div>
+      <button class="btn" style="background:#7f8c8d; margin-top:15px;" onclick="closeModal('orders-modal')">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- Modal Admin Autenticación -->
+  <div class="modal" id="auth-modal">
+    <div class="modal-content">
+      <h3>Acceso Administrador</h3>
+      <input type="email" id="admin-email-input" placeholder="Correo electrónico admin">
+      <button class="btn" onclick="loginAdmin()">Ingresar</button>
+      <button class="btn" style="background:#7f8c8d; margin-top:5px;" onclick="closeModal('auth-modal')">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal Producto -->
+  <div class="modal" id="prod-modal">
+    <div class="modal-content">
+      <h3 id="prod-modal-title">Publicar Producto</h3>
+      <input type="hidden" id="prod-id">
+      <input type="text" id="prod-title" placeholder="Título del producto">
+      <input type="number" id="prod-price" placeholder="Precio ($)">
+      <select id="prod-cat">
+        <option value="plantas">Plantas & Plantines</option>
+        <option value="insumos">Substratos & Compost</option>
+        <option value="herramientas">Macetas & Herramientas</option>
+      </select>
+      <input type="text" id="prod-badge" placeholder="Etiqueta u Oferta">
+      <input type="text" id="prod-img" placeholder="URL de la Imagen">
+      <button class="btn" onclick="saveProduct()">Guardar Publicación</button>
+      <button class="btn" style="background:#7f8c8d; margin-top:5px;" onclick="closeModal('prod-modal')">Cancelar</button>
+    </div>
+  </div>
+
+  <script>
+    const ADMIN_EMAIL = "mijardinorganicopinar@gmail.com";
+    let isAdmin = false;
+    let cart = [];
+
+    let products = [
+      { id: 1, title: 'Lote Plantines de Tomate Cherry x5', price: 450, cat: 'plantas', badge: 'OFERTA', img: 'https://images.unsplash.com/photo-1592841200221-a6898f307baa?w=400' },
+      { id: 2, title: 'Bolsa Compost Orgánico 10kg', price: 380, cat: 'insumos', badge: 'DESTACADO', img: 'https://images.unsplash.com/photo-1628352081506-83c43123ed6d?w=400' },
+      { id: 3, title: 'Maceta Biodegradable Artesanal x10', price: 290, cat: 'herramientas', badge: '', img: 'https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=400' }
+    ];
+
+    // INICIALIZACIÓN CON TU PUBLIC KEY DE PRODUCCIÓN REAL
+    const mp = new MercadoPago('APP_USR-2943dabe-8b83-4741-8ac6-893c43e43c4d', { locale: 'es-UY' });
+
+    function openAuthModal() { document.getElementById('auth-modal').style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function loginAdmin() {
+      const email = document.getElementById('admin-email-input').value.trim();
+      if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        isAdmin = true;
+        document.getElementById('admin-status').innerHTML = `🟢 Sesión Activa: <strong>${ADMIN_EMAIL}</strong>`;
+        document.getElementById('auth-btn').style.display = 'none';
+        document.getElementById('toggle-editor-btn').style.display = 'inline-block';
+        document.getElementById('add-prod-btn').style.display = 'inline-block';
+        closeModal('auth-modal');
+        renderProducts();
+      } else {
+        alert("Acceso denegado. Este correo no tiene permisos.");
+      }
+    }
+
+    function renderProducts(itemsToRender = products) {
+      const container = document.getElementById('products-container');
+      document.getElementById('product-count').textContent = itemsToRender.length;
+
+      container.innerHTML = itemsToRender.map(p => `
+        <div class="card">
+          ${p.badge ? `<span class="card-badge">${p.badge}</span>` : ''}
+          <img src="${p.img || 'https://via.placeholder.com/200'}" alt="${p.title}">
+          <div class="card-body">
+            <div class="card-title">${p.title}</div>
+            <div class="card-seller">Vendedor: Mi Jardín</div>
+            <div class="card-price">$${p.price}</div>
+            
+            <div class="card-actions">
+              <button class="btn" onclick="addToCart('${p.title}', ${p.price})">Agregar al carrito</button>
+              ${isAdmin ? `
+                <button class="btn btn-edit" onclick="editProduct(${p.id})">✏️</button>
+                <button class="btn btn-delete" onclick="deleteProduct(${p.id})">🗑️</button>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function openProductModal() {
+      document.getElementById('prod-id').value = '';
+      document.getElementById('prod-title').value = '';
+      document.getElementById('prod-price').value = '';
+      document.getElementById('prod-badge').value = '';
+      document.getElementById('prod-img').value = '';
+      document.getElementById('prod-modal-title').textContent = 'Publicar Producto';
+      document.getElementById('prod-modal').style.display = 'flex';
+    }
+
+    function saveProduct() {
+      const id = document.getElementById('prod-id').value;
+      const title = document.getElementById('prod-title').value;
+      const price = Number(document.getElementById('prod-price').value);
+      const cat = document.getElementById('prod-cat').value;
+      const badge = document.getElementById('prod-badge').value;
+      const img = document.getElementById('prod-img').value;
+
+      if (!title || !price) return alert("Completa título y precio.");
+
+      if (id) {
+        const index = products.findIndex(p => p.id == id);
+        products[index] = { id: Number(id), title, price, cat, badge, img };
+      } else {
+        products.push({ id: Date.now(), title, price, cat, badge, img });
+      }
+
+      closeModal('prod-modal');
+      renderProducts();
+    }
+
+    function editProduct(id) {
+      const p = products.find(prod => prod.id === id);
+      if (!p) return;
+      document.getElementById('prod-id').value = p.id;
+      document.getElementById('prod-title').value = p.title;
+      document.getElementById('prod-price').value = p.price;
+      document.getElementById('prod-cat').value = p.cat;
+      document.getElementById('prod-badge').value = p.badge;
+      document.getElementById('prod-img').value = p.img;
+      document.getElementById('prod-modal-title').textContent = 'Editar Publicación';
+      document.getElementById('prod-modal').style.display = 'flex';
+    }
+
+    function deleteProduct(id) {
+      if (confirm("¿Seguro de eliminar este producto?")) {
+        products = products.filter(p => p.id !== id);
+        renderProducts();
+      }
+    }
+
+    function filterCategory(cat) {
+      if (cat === 'all') renderProducts(products);
+      else renderProducts(products.filter(p => p.cat === cat));
+    }
+
+    function sortProducts(order) {
+      let sorted = [...products];
+      if (order === 'low') sorted.sort((a,b) => a.price - b.price);
+      if (order === 'high') sorted.sort((a,b) => b.price - a.price);
+      renderProducts(sorted);
+    }
+
+    function toggleEditor() {
+      document.getElementById('editor-drawer').classList.toggle('active');
+    }
+
+    function updateStyles() {
+      const primary = document.getElementById('picker-primary').value;
+      const accent = document.getElementById('picker-accent').value;
+      const bg = document.getElementById('picker-bg').value;
+      const radius = document.getElementById('picker-radius').value;
+      const logoUrl = document.getElementById('input-logo-url').value;
+      const titleText = document.getElementById('input-site-title').value;
+
+      document.documentElement.style.setProperty('--primary', primary);
+      document.documentElement.style.setProperty('--accent', accent);
+      document.documentElement.style.setProperty('--bg', bg);
+      document.documentElement.style.setProperty('--border-radius', radius + 'px');
+
+      if (titleText) {
+        document.getElementById('site-title').textContent = titleText;
+        document.getElementById('site-title-meta').textContent = titleText;
+      }
+
+      const logoImg = document.getElementById('site-logo');
+      if (logoUrl) {
+        logoImg.src = logoUrl;
+        logoImg.style.display = 'inline-block';
+      }
+    }
+
+    function addToCart(title, price) {
+      const item = cart.find(i => i.title === title);
+      if (item) item.quantity += 1;
+      else cart.push({ title, unit_price: price, quantity: 1 });
+      
+      updateCart();
+    }
+
+    function updateCart() {
+      const list = document.getElementById('cart-list');
+      const totalSpan = document.getElementById('cart-total');
+      const payBtn = document.getElementById('pay-btn');
+
+      if (cart.length === 0) {
+        list.innerHTML = '<li style="color:#888;">El carrito está vacío</li>';
+        totalSpan.textContent = '0';
+        payBtn.disabled = true;
+        return;
+      }
+
+      let total = 0;
+      list.innerHTML = cart.map(i => {
+        total += i.unit_price * i.quantity;
+        return `<li style="margin-bottom: 5px;">${i.title} (x${i.quantity}) - <strong>$${i.unit_price * i.quantity}</strong></li>`;
+      }).join('');
+
+      totalSpan.textContent = total;
+      payBtn.disabled = false;
+    }
+
+    // ABRIR FORMULARIO DE ENVÍO
+    function openCheckoutModal() {
+      document.getElementById('wallet_container').innerHTML = '';
+      document.getElementById('checkout-modal').style.display = 'flex';
+    }
+
+    // PROCESAR FORMULARIO, REGISTRAR PEDIDO Y GENERAR PAGO
+    async function processCheckout(event) {
+      event.preventDefault();
+
+      const customer = {
+        name: document.getElementById('cust-name').value,
+        phone: document.getElementById('cust-phone').value,
+        address: document.getElementById('cust-address').value,
+        department: document.getElementById('cust-dept').value
+      };
+
+      try {
+        const response = await fetch('/create_preference', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: cart, customer: customer })
+        });
+
+        const data = await response.json();
+        
+        document.getElementById('wallet_container').innerHTML = '';
+        mp.bricks().create("wallet", "wallet_container", {
+          initialization: { preferenceId: data.id }
+        });
+
+      } catch (err) {
+        alert("Ocurrió un error al registrar la orden.");
+      }
+    }
+
+    // CONSULTAR Y MOSTRAR HISTORIAL DE PEDIDOS
+    async function openOrdersModal() {
+      document.getElementById('orders-modal').style.display = 'flex';
+      const container = document.getElementById('orders-list-container');
+
+      try {
+        const response = await fetch('/api/orders');
+        const orders = await response.json();
+
+        if (orders.length === 0) {
+          container.innerHTML = '<p style="color:#888;">No hay órdenes registradas aún.</p>';
+          return;
+        }
+
+        container.innerHTML = `
+          <table class="orders-table">
+            <thead>
+              <tr>
+                <th>N° Orden</th>
+                <th>Fecha</th>
+                <th>Cliente y Datos de Envío</th>
+                <th>Items Pedidos</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orders.map(o => `
+                <tr>
+                  <td><strong>${o.id}</strong></td>
+                  <td>${o.date}</td>
+                  <td>
+                    <strong>${o.customer.name}</strong><br>
+                    📞 ${o.customer.phone}<br>
+                    🏠 ${o.customer.address}, ${o.customer.department}
+                  </td>
+                  <td>
+                    <ul style="padding-left:15px;">
+                      ${o.items.map(i => `<li>${i.title} (x${i.quantity})</li>`).join('')}
+                    </ul>
+                  </td>
+                  <td><strong>$${o.total} UYU</strong></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (err) {
+        container.innerHTML = '<p style="color:red;">Error al cargar los pedidos.</p>';
+      }
+    }
+
+    renderProducts();
+  </script>
+</body>
+</html>
